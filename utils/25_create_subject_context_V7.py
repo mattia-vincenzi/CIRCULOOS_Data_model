@@ -17,7 +17,7 @@
 # This file create a subject's @context file located in context.jsonld at root of the subject
 import json
 from datetime import datetime
-from github import Github
+from github import GHClient
 
 
 def echo(concept, variable):
@@ -149,27 +149,29 @@ def open_json(fileUrl):
             return None
 
 
-def open_yaml(fileUrl):
-    import ruamel.yaml as yaml
+def read_yaml(fileUrl):
+    import yaml
+    from yaml.resolver import Resolver
+    import re
     import requests
-    print("Opening yaml "+fileUrl)
-    try:
-        if fileUrl[0:4] == "http":
-            # es URL
-            pointer = requests.get(fileUrl,timeout=1)
-            return yaml.safe_load(pointer.content.decode('utf-8'))
-    except:
-        print ("Error opening "+fileUrl)
-        return "exception"
+    # required for avoiding that No was replace by false
+    for ch in "OoYyNn":
+        if ch in Resolver.yaml_implicit_resolvers:
+            if len(Resolver.yaml_implicit_resolvers[ch]) == 1:
+                del Resolver.yaml_implicit_resolvers[ch]
+            else:
+                Resolver.yaml_implicit_resolvers[ch] = [x for x in Resolver.yaml_implicit_resolvers[ch] if x[0] != 'tag:yaml.org,2002:bool']
+
+
+    if fileUrl[0:4] == "http":
+        # es URL
+        pointer = requests.get(fileUrl, timeout=1)
+        return yaml.safe_load(pointer.content.decode('utf-8'))
     else:
         # es file
-        try:
-            with open(fileUrl, "r") as file:
-                return yaml.load(file)
-            # file = open(fileUrl, "r")
-            # return yaml.safe_load(file.read())
-        except:
-            return "wrong file "+fileUrl
+        file = open(fileUrl, "r")
+        return yaml.safe_load(file.read())
+
 
 
 def exist_page(url):
@@ -188,9 +190,9 @@ def exist_page(url):
         return [False, "wrong domain"]
 
 def github_push_from_variable(contentVariable, repoName, fileTargetPath, message, globalUser, token):
-    from github import Github
-    g = Github(token)
-    repo = g.get_organization(globalUser).get_repo(repoName)
+    from github import GHClient
+    g = GHClient(token=token)
+    repo = g.get_org(globalUser).get_repo(repoName)
     try:
         file = repo.get_contents("/" + fileTargetPath)
         update = True
@@ -297,7 +299,7 @@ def list_all_properties_v2(repoName, modelYamlDict):
                     contextDict["@context"] = dict(contextDict["@context"], **partialoutput["@context"])
                 if "oneOf" in propKeys:
                     partialoutput = list_all_properties_v2(repoName, modelYamlDict[prop]["oneOf"])
-                    contextDict["@context"] = dict(contextDict["@context"], **partialoutput["@context"])   
+                    contextDict["@context"] = dict(contextDict["@context"], **partialoutput["@context"])
 
     return contextDict
 
@@ -310,7 +312,7 @@ credentialsFile = "./credentials.json"
 credentials = open_json(credentialsFile)
 token = credentials["token"]
 globalUser = credentials["globalUser"]
-g = Github(token)
+g = GHClient(token=token)
 
 configFile = "datamodels_to_publish.json"
 dataModelsToPublish = open_json(configFile)
@@ -320,14 +322,17 @@ dataModelsToPublish = open_json(configFile)
 coreContextDictUrl="fiware-context.jsonld"
 coreContextDict = open_json(coreContextDictUrl)
 ###       ALWAYS INSERT THE raw URL ie. https://raw.githubusercontent.com/konstantinosGombakis/CIRCULOOS_Data_model/main/material/leather/ 
-customRepository="https://raw.githubusercontent.com/konstantinosGombakis/CIRCULOOS_Data_model/main/material/leather/"
+customRepository="http://localhost:8085/"
+# # For local webserver
+# customRepository="http://localhost:8085/"
+
 # https://raw.githubusercontent.com/konstantinosGombakis/CIRCULOOS_data_model/main/schema.json
 # customRepository="https://konstantinosgombakis.github.io/CIRCULOOS_data_model/custom_data_model/"
 # customRepository="https://raw.githubusercontent.com/konstantinosGombakis/CIRCULOOS_data_model/main/custom_data_model/schema.json"
 
 dataModelsListUrl = "https://raw.githubusercontent.com/smart-data-models/data-models/master/specs/AllSubjects/official_list_data_models.json"
-# dataModelsList = open_json(dataModelsListUrl)["officialList"]
-# print(dataModelsList)
+dataModelsList = open_json(dataModelsListUrl)["officialList"]
+#print(dataModelsList)
 if 'customRepository' in globals():
     repoNames=dataModelsToPublish["subject"]
 else:
@@ -352,11 +357,13 @@ if dataModelsToPublish["subject"] in repoNames:
         else:
             urlModelYaml = "https://smart-data-models.github.io/" + repoName + "/" + dataModel + "/model.yaml"
         echo('urlModelYaml',urlModelYaml)
-        modelYamlDict = open_yaml(urlModelYaml)
+        modelYamlDict = read_yaml(urlModelYaml)
 # debug
         print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
         echo("modelYamlDict", modelYamlDict)
 # / debug  
+
+        print(f"#############################{modelYamlDict}")
 
         echo("modelYamlDict[dataModel][properties]", modelYamlDict[dataModel]["properties"])
         # important part 

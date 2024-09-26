@@ -1,4 +1,4 @@
-from github import Github
+from github import GHClient
 import os
 import errno
 import requests
@@ -212,7 +212,7 @@ newLine = chr(10) + chr(13)
 unitsWarning = "See [FAQ 10](https://smartdatamodels.org/index.php/faqs/) to get an answer on how to deal with magnitude units"
 
 
-g = Github(token)
+g = GHClient(token=token)
 localExecution = False
 
 # static values
@@ -227,7 +227,10 @@ licenseMessageEnd = "/LICENSE.md)"
 
 
 urlNotesRoot = "https://smart-data-models.github.io"
-customRepository="https://raw.githubusercontent.com/konstantinosGombakis/CIRCULOOS_Data_model/main/material/leather/"
+customRepository="http://localhost:8085/"
+# # For local webserver 
+# customRepository="http://localhost:8085/material/leather/"
+
 # static definitions
 propertyTypes = ["Property", "Relationship", "Geoproperty"]
 
