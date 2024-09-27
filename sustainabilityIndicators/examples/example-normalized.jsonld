@@ -1,5 +1,6 @@
 {
-  "id": "entity-001",
+  "id": "urn:ngsi-ld:efi:entity-001",
+  "type": "environmental_footprint_indicator",
   "acidificationAccumulatedExceedanceAE": {
     "value": 345.67,
     "unitCode": "XMHQ",
